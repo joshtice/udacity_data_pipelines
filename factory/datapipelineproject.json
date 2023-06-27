@@ -1,0 +1,9 @@
+{
+	"name": "datapipelineproject",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "151dad6b-7648-4ee0-968d-2ed7946b5245",
+		"tenantId": "6903516a-0482-4529-93bb-74c6781f02d8"
+	}
+}

@@ -1,0 +1,125 @@
+{
+	"name": "df_aggregate_data",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ds_sqldb_nycpayroll",
+						"type": "DatasetReference"
+					},
+					"name": "dssqldbnycpayroll"
+				},
+				{
+					"dataset": {
+						"referenceName": "ds_csv_historical_payroll",
+						"type": "DatasetReference"
+					},
+					"name": "dsdatalakenycpayrollhistorical"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ds_synapse_nycpayroll_summary",
+						"type": "DatasetReference"
+					},
+					"name": "dssynapsenycpayrollsummary"
+				}
+			],
+			"transformations": [
+				{
+					"name": "unionpayroll"
+				},
+				{
+					"name": "filterfiscalyear"
+				},
+				{
+					"name": "derivecolumntotalpaid"
+				},
+				{
+					"name": "aggtotalpaid"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     fiscal_year as integer (2020)",
+				"}",
+				"source(output(",
+				"          FiscalYear as integer,",
+				"          PayrollNumber as integer,",
+				"          AgencyID as string,",
+				"          AgencyName as string,",
+				"          EmployeeID as string,",
+				"          LastName as string,",
+				"          FirstName as string,",
+				"          AgencyStartDate as date,",
+				"          WorkLocationBorough as string,",
+				"          TitleCode as string,",
+				"          TitleDescription as string,",
+				"          LeaveStatusasofJune30 as string,",
+				"          BaseSalary as double,",
+				"          PayBasis as string,",
+				"          RegularHours as double,",
+				"          RegularGrossPaid as double,",
+				"          OTHours as double,",
+				"          TotalOTPaid as double,",
+				"          TotalOtherPay as double",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> dssqldbnycpayroll",
+				"source(output(",
+				"          FiscalYear as integer,",
+				"          PayrollNumber as integer,",
+				"          AgencyID as string,",
+				"          AgencyName as string,",
+				"          EmployeeID as string,",
+				"          LastName as string,",
+				"          FirstName as string,",
+				"          AgencyStartDate as date,",
+				"          WorkLocationBorough as string,",
+				"          TitleCode as string,",
+				"          TitleDescription as string,",
+				"          LeaveStatusasofJune30 as string,",
+				"          BaseSalary as double,",
+				"          PayBasis as string,",
+				"          RegularHours as double,",
+				"          RegularGrossPaid as double,",
+				"          OTHours as double,",
+				"          TotalOTPaid as double,",
+				"          TotalOtherPay as double",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> dsdatalakenycpayrollhistorical",
+				"dssqldbnycpayroll, dsdatalakenycpayrollhistorical union(byName: true)~> unionpayroll",
+				"unionpayroll filter(toInteger(FiscalYear) >= $fiscal_year) ~> filterfiscalyear",
+				"filterfiscalyear derive(TotalPaid = RegularGrossPaid + TotalOTPaid + TotalOtherPay) ~> derivecolumntotalpaid",
+				"derivecolumntotalpaid aggregate(groupBy(AgencyName,",
+				"          FiscalYear),",
+				"     AggregatedTotalPaid = sum(TotalPaid)) ~> aggtotalpaid",
+				"aggtotalpaid sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          FiscalYear as integer,",
+				"          AgencyName as string,",
+				"          TotalPaid as double",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     truncate:true,",
+				"     format: 'table',",
+				"     staged: true,",
+				"     allowCopyCommand: true,",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> dssynapsenycpayrollsummary"
+			]
+		}
+	}
+}
